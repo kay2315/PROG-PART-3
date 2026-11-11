@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.git
+**/.github
+**/*.user
+**/App_Data/
+Part1-docs/
+*.md
+docker-compose*.yml

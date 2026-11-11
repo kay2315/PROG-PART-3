@@ -1,0 +1,51 @@
+# Starts the whole RaceDay platform with ONE command:   docker compose up --build
+#   web      -> ASP.NET Core MVC front end   http://localhost:8080
+#   api      -> Part 2 REST API (Swagger)    http://localhost:5100/swagger
+#   sql      -> SQL Server 2022
+#   azurite  -> Azure Blob Storage emulator (the API stores banners / profile pictures here)
+services:
+  sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    platform: linux/amd64
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "RaceDay_Passw0rd!"
+    volumes:
+      - sqldata:/var/opt/mssql
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    command: azurite-blob --blobHost 0.0.0.0 --skipApiVersionCheck --loose
+    volumes:
+      - blobdata:/data
+
+  api:
+    build:
+      context: .
+      dockerfile: RaceDay.Api/Dockerfile
+    depends_on:
+      - sql
+      - azurite
+    environment:
+      ConnectionStrings__RaceDay: "Server=sql,1433;Database=RaceDay;User Id=sa;Password=RaceDay_Passw0rd!;TrustServerCertificate=True;MultipleActiveResultSets=true"
+      # Well-known public Azurite development account key (not a secret). Use a real Azure connection string in production.
+      BlobStorage__ConnectionString: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;"
+      BlobStorage__ContainerName: "raceday-images"
+      Seed__DemoData: "true"
+    ports:
+      - "5100:8080"
+
+  web:
+    build:
+      context: .
+      dockerfile: RaceDay.Web/Dockerfile
+    depends_on:
+      - api
+    environment:
+      Api__BaseUrl: "http://api:8080"
+    ports:
+      - "8080:8080"
+
+volumes:
+  sqldata:
+  blobdata:
